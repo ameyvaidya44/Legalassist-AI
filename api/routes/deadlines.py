@@ -209,7 +209,12 @@ async def create_deadline(
     _require_owned_case(case_id, current_user, db)
 
     now = datetime.now(timezone.utc)
-    days_until = (due_date - now).days
+    
+    # Ensure due_date is timezone-aware
+    if due_date is not None and due_date.tzinfo is None:
+        due_date = due_date.replace(tzinfo=timezone.utc)
+    
+    days_until = (due_date - now).days if due_date else 0
     
     return DeadlineResponse(
         deadline_id="dl_new",
@@ -217,7 +222,7 @@ async def create_deadline(
         case_id=case_id,
         title=title,
         description=description,
-        due_date=due_date,
+        due_date=due_date or now,
         days_until_due=days_until,
         priority=priority or _deadline_priority(days_until),
         status="pending",
@@ -253,7 +258,7 @@ async def update_deadline(
     effective_due_date = due_date or deadline.deadline_date
     if effective_due_date is not None and effective_due_date.tzinfo is None:
         effective_due_date = effective_due_date.replace(tzinfo=timezone.utc)
-    days_until = ((effective_due_date or now) - now).days
+    days_until = ((effective_due_date or now) - now).days if effective_due_date else 0
     return DeadlineResponse(
         deadline_id=str(deadline.id),
         user_id=current_user.user_id,
